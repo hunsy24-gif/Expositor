@@ -8,6 +8,8 @@ export function dossierStore(adapter){
     if(raw!==null&&raw!==undefined){
       try{return normalize(JSON.parse(raw));}
       catch(primaryError){
+        // Never roll back a database written by newer Expositor software.
+        if(String(primaryError).includes('newer Expositor version'))throw primaryError;
         const copy=await adapter.getItem(KEYS.previous);
         if(copy===null||copy===undefined)throw primaryError;
         const recovered=normalize(JSON.parse(copy));
