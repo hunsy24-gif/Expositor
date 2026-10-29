@@ -28,7 +28,7 @@ export default function App(){
   const current=db.sermons.find(s=>s.id===selectedId);
   useEffect(()=>{
     let alive=true;
-    (async()=>{try{const saved=await loadDossiers();if(alive){setDb(saved);setSelectedId(saved.sermons[0]?.id||'');if(saved.recoveredFromPrevious)setError('Recovered an earlier copy after a damaged save. Export a backup.');}}catch(e){if(alive){setStorageOK(false);setError('Storage failed: '+String(e));}}finally{if(alive)setLoaded(true);}})();
+    (async()=>{try{const saved=await loadDossiers();if(alive){setDb(saved);setSelectedId(saved.sermons.find(s=>s.id===saved.activeSermonId)?.id||saved.sermons[0]?.id||'');if(saved.recoveredFromPrevious)setError('Recovered an earlier copy after a damaged save. Export a backup.');}}catch(e){if(alive){setStorageOK(false);setError('Storage failed: '+String(e));}}finally{if(alive)setLoaded(true);}})();
     const off=subscribeEntryEvent(event=>{
       if(event.id===81002||event.id===81003){
         setDraft(emptyCard());setEditId('');setScreen('card');setCapturing(true);setCaptureStatus('Reading selected handwriting on this device…');
@@ -46,10 +46,10 @@ export default function App(){
   }
   function patchS(patch){
     if(!current)return;
-    return save({...db,sermons:db.sermons.map(s=>s.id===selectedId?{...s,...patch,updatedAt:iso()}:s)});
+    return save({...db,activeSermonId:selectedId,sermons:db.sermons.map(s=>s.id===selectedId?{...s,...patch,updatedAt:iso()}:s)});
   }
   async function addS(){
-    try{const s=createSermon(newS);if(await save({...db,sermons:[s,...db.sermons]})){setSelectedId(s.id);setNewS({title:'',passage:'',series:'',date:''});setScreen('sermon');}}
+    try{const s=createSermon(newS);if(await save({...db,activeSermonId:s.id,sermons:[s,...db.sermons]})){setSelectedId(s.id);setNewS({title:'',passage:'',series:'',date:''});setScreen('sermon');}}
     catch(e){Alert.alert('Complete your dossier',String(e));}
   }
   async function addCard(){
@@ -57,7 +57,7 @@ export default function App(){
     try{
       const card=createCard(draft);
       const next={...db,sermons:db.sermons.map(s=>s.id!==selectedId?s:{...s,updatedAt:iso(),cards:editId?s.cards.map(c=>c.id===editId?{...card,id:c.id,createdAt:c.createdAt}:c):[...s.cards,card]})};
-      if(await save(next)){setEditId('');setDraft(emptyCard());setScreen('sermon');}
+      if(await save({...next,activeSermonId:selectedId})){setEditId('');setDraft(emptyCard());setScreen('sermon');}
     }catch(e){Alert.alert('Check the resource',String(e));}
   }
   async function capture(){
@@ -89,7 +89,7 @@ export default function App(){
       {title('Sermon Library')}
       <View style={styles.row}><Btn active onPress={()=>setScreen('new')}>+ NEW SERMON</Btn></View>
       <Field name="FIND SERMON OR PUBLIC RESEARCH" value={search} set={setSearch} placeholder="Passage, theme, title, quotation…"/>
-      {db.sermons.filter(s=>!search||[s.title,s.passage,s.series,s.idea,...safeResearch(s).flatMap(c=>[c.body,c.verse,c.source])].join(' ').toLowerCase().includes(search.toLowerCase())).map(s=><Pressable key={s.id} style={styles.resource} onPress={()=>{setSelectedId(s.id);setResourceSearch('');setShowPrivate(false);setScreen('sermon');}}><Text style={styles.itemTitle}>{s.title}</Text><Text style={styles.meta}>{s.passage} {s.series?' · '+s.series:''}</Text><Text style={styles.meta}>{s.archived?'ARCHIVED · ':''}{s.cards.length} research items · {STAGES.find(t=>t.key===s.stage)?.label||'TEXT'}</Text></Pressable>)}
+      {db.sermons.filter(s=>!search||[s.title,s.passage,s.series,s.idea,...safeResearch(s).flatMap(c=>[c.body,c.verse,c.source])].join(' ').toLowerCase().includes(search.toLowerCase())).map(s=><Pressable key={s.id} style={styles.resource} onPress={()=>{setSelectedId(s.id);setResourceSearch('');setShowPrivate(false);setScreen('sermon');save({...db,activeSermonId:s.id});}}><Text style={styles.itemTitle}>{s.title}</Text><Text style={styles.meta}>{s.passage} {s.series?' · '+s.series:''}</Text><Text style={styles.meta}>{s.archived?'ARCHIVED · ':''}{s.cards.length} research items · {STAGES.find(t=>t.key===s.stage)?.label||'TEXT'}</Text></Pressable>)}
       {db.sermons.length===0?<Text style={styles.hint}>Start with Scripture, not an outline. Create a dossier for your next passage, then attach research as you study.</Text>:null}
     </>}
     {screen==='new'&&<>{title('New Sermon Dossier')}<Field name="SERMON TITLE (WORKING)" value={newS.title} set={title=>setNewS({...newS,title})} placeholder="A working title, not necessarily the final sermon title"/><Field name="SCRIPTURE PASSAGE" value={newS.passage} set={passage=>setNewS({...newS,passage})} placeholder="Mark 2:13–22"/><Field name="SERIES" value={newS.series} set={series=>setNewS({...newS,series})}/><Field name="PREACHING DATE (OPTIONAL)" value={newS.date} set={date=>setNewS({...newS,date})}/><Btn active disabled={busy} onPress={addS}>CREATE DOSSIER</Btn></>}
@@ -126,7 +126,7 @@ export default function App(){
       </Block>
       <Btn onPress={()=>patchS({archived:!current.archived})}>{current.archived?'RESTORE TO ACTIVE':'ARCHIVE SERMON'}</Btn>
     </>}
-    {screen==='select'&&<>{title('Choose Sermon Destination')}<Text style={styles.hint}>Selected ink has not been saved yet. Choose the dossier that should receive it; the handwriting itself stays in the original Note.</Text>{db.sermons.map(s=><Pressable key={s.id} style={styles.resource} onPress={()=>{setSelectedId(s.id);setScreen('card');}}><Text style={styles.itemTitle}>{s.title}</Text><Text style={styles.meta}>{s.passage}</Text></Pressable>)}<Btn onPress={()=>setScreen('new')}>NEW DOSSIER</Btn></>}
+    {screen==='select'&&<>{title('Choose Sermon Destination')}<Text style={styles.hint}>Selected ink has not been saved yet. Choose the dossier that should receive it; the handwriting itself stays in the original Note.</Text>{db.sermons.map(s=><Pressable key={s.id} style={styles.resource} onPress={()=>{setSelectedId(s.id);setScreen('card');save({...db,activeSermonId:s.id});}}><Text style={styles.itemTitle}>{s.title}</Text><Text style={styles.meta}>{s.passage}</Text></Pressable>)}<Btn onPress={()=>setScreen('new')}>NEW DOSSIER</Btn></>}
     {screen==='idea'&&current&&<>{title('Central Exegetical Idea')}<Text style={styles.hint}>Answer from the text, not from a favorite theme or commentary. Save explicitly.</Text>
       <Field name="WHAT THE BIBLICAL AUTHOR IS SAYING" multi value={idea.idea} set={x=>setIdea({...idea,idea:x})}/>
       <Field name="WHY THE AUTHOR SAYS IT / INTENDED RESPONSE" multi value={idea.purpose} set={x=>setIdea({...idea,purpose:x})}/>
