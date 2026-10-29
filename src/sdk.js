@@ -1,0 +1,4 @@
+import {PluginCommAPI,PluginManager} from 'sn-plugin-lib';
+const READ='plugin.permission.FILE:READ';
+const v=(res)=>res&&res.success?res.result:null;
+export async function getNoteLocation(){const permission=await PluginManager.hasPermission(READ);if(!(permission>0)){const granted=await PluginManager.requestPermission(READ);if(!(granted>0))throw Error('Note read permission was declined; enter the page reference manually.');}let path='',page='',selection='';try{path=String(v(await PluginCommAPI.getCurrentFilePath())||'');}catch(e){}try{const n=v(await PluginCommAPI.getCurrentPageNum());if(n!==null)page=String(Number(n)+1);}catch(e){}try{const r=await PluginCommAPI.getLassoElements();if(r&&r.success&&Array.isArray(r.result))selection=r.result.length+' selected element(s)';}catch(e){}return {path,page,selection};}
