@@ -18,6 +18,8 @@ export default function App(){
   const [db,setDb]=useState({version:3,sermons:[]});
   const [loaded,setLoaded]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState('');
   const writing=useRef(false);
+  const captureLock=useRef(false);
+  const resourceRef=useRef(null);
   const [storageOK,setStorageOK]=useState(true);
   const [selectedId,setSelectedId]=useState(''),[screen,setScreen]=useState('home');
   const [search,setSearch]=useState(''),[resourceSearch,setResourceSearch]=useState(''),[showPrivate,setShowPrivate]=useState(false);
@@ -29,6 +31,7 @@ export default function App(){
   const [importText,setImportText]=useState('');
   const [lastSaveMessage,setLastSaveMessage]=useState('');
   const current=db.sermons.find(s=>s.id===selectedId);
+  useEffect(()=>{resourceRef.current={draft,editId};},[draft,editId]);
   const dirtyCard=screen==='card'&&(!!editId||['body','verse','source','page','location'].some(k=>String(draft[k]||'').trim()));
   const dirtyIdea=screen==='idea'&&current&&(idea.idea!==current.idea||idea.purpose!==current.purpose);
   function navigate(next){if(busy||capturing){Alert.alert('Please finish the current operation','The Expositor is still saving or reading the selection.');return;}if(dirtyCard||dirtyIdea){Alert.alert('Unsaved preparation','Your current changes are not saved.',[{text:'Keep editing',style:'cancel'},{text:'Discard changes',style:'destructive',onPress:()=>{setDraft(emptyCard());setEditId('');setCaptureStatus('');setScreen(next);}}]);return;}setScreen(next);}
