@@ -107,8 +107,9 @@ export default function App(){
       {title('Sermon Library')}
       <View style={styles.row}><Btn active onPress={()=>{setResumeCardAfterNew(false);setScreen('new');}}>+ NEW SERMON</Btn></View>
       <Field name="FIND SERMON OR PUBLIC RESEARCH" value={search} set={setSearch} placeholder="Passage, theme, title, quotation…"/>
-      {db.sermons.filter(s=>!search||[s.title,s.passage,s.series,s.idea,...safeResearch(s).flatMap(c=>[c.body,c.verse,c.source])].join(' ').toLowerCase().includes(search.toLowerCase())).map(s=><Pressable key={s.id} style={styles.resource} onPress={()=>{setSelectedId(s.id);setResourceSearch('');setShowPrivate(false);setScreen('sermon');save({...db,activeSermonId:s.id});}}><Text style={styles.itemTitle}>{s.title}</Text><Text style={styles.meta}>{s.passage} {s.series?' · '+s.series:''}</Text><Text style={styles.meta}>{s.archived?'ARCHIVED · ':''}{s.cards.length} research items · {STAGES.find(t=>t.key===s.stage)?.label||'TEXT'}</Text></Pressable>)}
+      {db.sermons.filter(s=>!search||[s.title,s.passage,s.series,s.idea,...safeResearch(s).flatMap(c=>[c.body,c.verse,c.source])].join(' ').toLowerCase().includes(search.toLowerCase())).slice(0,60).map(s=><Pressable key={s.id} style={styles.resource} onPress={()=>{setSelectedId(s.id);setResourceSearch('');setShowPrivate(false);setScreen('sermon');save({...db,activeSermonId:s.id});}}><Text style={styles.itemTitle}>{s.title}</Text><Text style={styles.meta}>{s.passage} {s.series?' · '+s.series:''}</Text><Text style={styles.meta}>{s.archived?'ARCHIVED · ':''}{s.cards.length} research items · {STAGES.find(t=>t.key===s.stage)?.label||'TEXT'}</Text></Pressable>)}
       {db.sermons.length===0?<Text style={styles.hint}>Start with Scripture, not an outline. Create a dossier for your next passage, then attach research as you study.</Text>:null}
+      {db.sermons.length>60?<Text style={styles.hint}>Showing up to 60 matching sermons; use search to find older dossiers.</Text>:null}
     </>}
     {screen==='new'&&<>{title('New Sermon Dossier')}<Field name="SERMON TITLE (WORKING)" value={newS.title} set={title=>setNewS({...newS,title})} placeholder="A working title, not necessarily the final sermon title"/><Field name="SCRIPTURE PASSAGE" value={newS.passage} set={passage=>setNewS({...newS,passage})} placeholder="Mark 2:13–22"/><Field name="SERIES" value={newS.series} set={series=>setNewS({...newS,series})}/><Field name="PREACHING DATE (OPTIONAL)" value={newS.date} set={date=>setNewS({...newS,date})}/><Btn active disabled={busy} onPress={addS}>CREATE DOSSIER</Btn></>}
     {screen==='sermon'&&current&&<>
@@ -127,9 +128,10 @@ export default function App(){
       <Block title="RESEARCH & HANDWRITTEN SOURCE REFERENCES">
         <Text style={styles.meta}>{current.cards.length} total · {current.cards.filter(isPrivate).length} private · {safePulpit(current).length} selected for pulpit</Text>
         <Field name="SEARCH THIS DOSSIER" value={resourceSearch} set={setResourceSearch}/>
-        {current.cards.filter(c=>(showPrivate||!isPrivate(c))&&[c.kind,c.body,c.verse,c.source,c.location].join(' ').toLowerCase().includes(resourceSearch.toLowerCase())).map(c=><View style={styles.resource} key={c.id}>
+        {current.cards.length>60?<Text style={styles.hint}>Showing up to 60 matching resources at once. Search a word, verse, author, or source to reveal other cards without loading the whole library.</Text>:null}
+        {current.cards.filter(c=>(showPrivate||!isPrivate(c))&&[c.kind,c.body,c.verse,c.source,c.location].join(' ').toLowerCase().includes(resourceSearch.toLowerCase())).slice(0,60).map(c=><View style={styles.resource} key={c.id}>
           <View style={styles.space}><Text style={styles.label}>{c.kind.toUpperCase()}</Text><Text style={styles.meta}>{isPrivate(c)?'PRIVATE':'STUDY'}</Text></View>
-          <Text style={styles.body}>{c.body||'(source reference)'}</Text>
+          <Text style={styles.body} numberOfLines={4}>{c.body||'(source reference)'}</Text>
           {c.verse?<Text style={styles.meta}>SCRIPTURE · {c.verse}</Text>:null}
           {c.source?<Text style={styles.meta}>SOURCE · {c.source} {c.page||''}</Text>:null}
           {c.location?<Text style={styles.meta}>LOCATION · {c.location}</Text>:null}
