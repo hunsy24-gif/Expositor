@@ -6,8 +6,8 @@
   "pluginKey": "TheExpositor",
   "jsMainPath": "index",
   "iconPath": "assets/icon.png",
-  "versionName": "0.7.0-alpha",
-  "versionCode": "7",
+  "versionName": "0.8.0-alpha",
+  "versionCode": "8",
   "uses-permissions": [
     "plugin.permission.FILE:READ"
   ]
