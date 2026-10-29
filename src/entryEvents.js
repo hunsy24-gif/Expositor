@@ -1,0 +1,1 @@
+let pending=null;const listeners=new Set();export function pushEntryEvent(event){if(!event||typeof event.id!=='number')return;if(listeners.size){for(const cb of listeners)cb(event);pending=null;}else pending=event;}export function subscribeEntryEvent(cb){listeners.add(cb);if(pending){const event=pending;pending=null;cb(event);}return ()=>listeners.delete(cb);}
