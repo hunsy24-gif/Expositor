@@ -1,6 +1,6 @@
 import fs from 'node:fs';import assert from 'node:assert/strict';
 const cfg=JSON.parse(fs.readFileSync('PluginConfig.json','utf8'));const app=JSON.parse(fs.readFileSync('app.json','utf8'));
-assert.equal(cfg.pluginKey,app.name);assert.equal(cfg.versionCode,6);
+assert.equal(cfg.pluginKey,app.name);assert.equal(Number(cfg.versionCode),6);
 assert.deepEqual(cfg['uses-permissions'],['plugin.permission.FILE:READ']);
 assert(!cfg['uses-permissions'].includes('plugin.permission.INTERNET'));
 assert(fs.readFileSync('index.js','utf8').includes('registerButtonListener'));
