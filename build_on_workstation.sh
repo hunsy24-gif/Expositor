@@ -10,6 +10,7 @@ command -v java >/dev/null || { echo 'JDK 21 is required' >&2; exit 1; }
 if [ -z "${ANDROID_HOME:-}" ] && [ -z "${ANDROID_SDK_ROOT:-}" ]; then echo 'Set ANDROID_HOME or ANDROID_SDK_ROOT' >&2; exit 1; fi
 npx --yes @react-native-community/cli@18.0.0 init TheExpositor --template @supernote-plugin/sn-plugin-template --version 0.79.2
 cd TheExpositor
+rm -f App.tsx
 cp "$HERE/index.js" "$HERE/App.js" "$HERE/app.json" "$HERE/PluginConfig.json" .
 mkdir -p src assets
 cp "$HERE"/src/*.js src/
