@@ -40,7 +40,7 @@ export default function App(){
     let alive=true;
     (async()=>{try{const saved=await loadDossiers();if(alive){setDb(saved);setSelectedId(saved.sermons.find(s=>s.id===saved.activeSermonId)?.id||saved.sermons[0]?.id||'');if(saved.recoveredFromPrevious)setError('Recovered an earlier copy after a damaged save. Export a backup.');}}catch(e){if(alive){setStorageOK(false);setError('Storage failed: '+String(e));}}finally{if(alive)setLoaded(true);}})();
     const off=subscribeEntryEvent(event=>{
-      if(event.id===81002||event.id===81003){
+      if(event.id===81002||event.id===81003||event.id===81004){
         if(captureLock.current)return;
         const prior=resourceRef.current;
         if(prior&&(prior.editId||['body','verse','source','page','location'].some(k=>String(prior.draft?.[k]||'').trim()))){
