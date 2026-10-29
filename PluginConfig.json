@@ -1,0 +1,14 @@
+{
+  "name": "The Expositor",
+  "desc": "Offline-first sermon dossiers, biblical exegesis, source tracking and prayer journaling",
+  "author": "The Expositor",
+  "pluginID": "expsrm2026manta1",
+  "pluginKey": "TheExpositor",
+  "jsMainPath": "index",
+  "iconPath": "assets/icon.png",
+  "versionName": "0.6.0-alpha",
+  "versionCode": "6",
+  "uses-permissions": [
+    "plugin.permission.FILE:READ"
+  ]
+}
