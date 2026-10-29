@@ -2,7 +2,7 @@ import React,{useState,useEffect,useRef} from 'react';
 import {ActivityIndicator,Alert,Pressable,ScrollView,Share,StyleSheet,Text,TextInput,View} from 'react-native';
 import {STAGES,KINDS,STATUS,DISPOSITIONS,CHECKS,createSermon,createCard,normalize,merge,safeResearch,safePulpit,researchText,pulpitText,isPrivate} from './src/domain';
 import {loadDossiers,storeDossiers,previousDossiers} from './src/storage';
-import {getNoteLocation} from './src/sdk';
+import {getNoteLocation,getSelectionCapture} from './src/sdk';
 import {subscribeEntryEvent} from './src/entryEvents';
 import {mentorForStage} from './src/mentor';
 
@@ -22,6 +22,7 @@ export default function App(){
   const [search,setSearch]=useState(''),[resourceSearch,setResourceSearch]=useState(''),[showPrivate,setShowPrivate]=useState(false);
   const [newS,setNewS]=useState({title:'',passage:'',series:'',date:''});
   const [draft,setDraft]=useState(emptyCard()),[editId,setEditId]=useState('');
+  const [capturing,setCapturing]=useState(false),[captureStatus,setCaptureStatus]=useState('');
   const [idea,setIdea]=useState({idea:'',purpose:''});
   const [importText,setImportText]=useState('');
   const current=db.sermons.find(s=>s.id===selectedId);
@@ -30,8 +31,8 @@ export default function App(){
     (async()=>{try{const saved=await loadDossiers();if(alive){setDb(saved);setSelectedId(saved.sermons[0]?.id||'');if(saved.recoveredFromPrevious)setError('Recovered an earlier copy after a damaged save. Export a backup.');}}catch(e){if(alive){setStorageOK(false);setError('Storage failed: '+String(e));}}finally{if(alive)setLoaded(true);}})();
     const off=subscribeEntryEvent(event=>{
       if(event.id===81002||event.id===81003){
-        setDraft(emptyCard());setEditId('');setScreen('card');
-        getNoteLocation().then(v=>{if(!alive)return;const loc=[v.path,v.page?'page '+v.page:'',v.selection].filter(Boolean).join(' | ');if(loc)setDraft(d=>({...d,location:loc}));}).catch(e=>{if(alive)Alert.alert('Source capture unavailable',String(e));});
+        setDraft(emptyCard());setEditId('');setScreen('card');setCapturing(true);setCaptureStatus('Reading selected handwriting on this device…');
+        getSelectionCapture({recognize:true}).then(v=>{if(!alive)return;const loc=[v.path,v.page?'page '+v.page:'',v.selection].filter(Boolean).join(' | ');setDraft(d=>({...d,location:loc,body:v.body||d.body,status:'To verify'}));setCaptureStatus(v.recognized?'Handwriting/text recognized. Check every word against the original before saving.':(v.warning||'Source location captured; add a brief note if needed.'));}).catch(e=>{if(alive)setCaptureStatus('Automatic capture unavailable: '+String(e));}).finally(()=>{if(alive)setCapturing(false);});
       }
     });return ()=>{alive=false;off();};
   },[]);
@@ -60,8 +61,10 @@ export default function App(){
     }catch(e){Alert.alert('Check the resource',String(e));}
   }
   async function capture(){
-    try{const x=await getNoteLocation();const location=[x.path,x.page?'page '+x.page:'',x.selection].filter(Boolean).join(' | ');if(!location)throw Error('No note or document location was available. Enter the reference manually.');setDraft(d=>({...d,location}));}
-    catch(e){Alert.alert('Capture unavailable',String(e));}
+    if(capturing)return;setCapturing(true);setCaptureStatus('Reading your selected handwriting…');
+    try{const x=await getSelectionCapture({recognize:true});const location=[x.path,x.page?'page '+x.page:'',x.selection].filter(Boolean).join(' | ');if(!location&&!x.body)throw Error('No current selection was available. Enter the reference manually.');setDraft(d=>({...d,location:location||d.location,body:x.body||d.body,status:'To verify'}));setCaptureStatus(x.recognized?'Review the on-device transcription carefully before saving.':(x.warning||'Source reference captured without transcription.'));}
+    catch(e){setCaptureStatus('Could not read selection; type or paste the note manually.');Alert.alert('Capture unavailable',String(e));}
+    finally{setCapturing(false);}
   }
   function share(message){Share.share({message}).catch(e=>Alert.alert('Share unavailable',String(e)));}
   async function restore(){
@@ -123,6 +126,7 @@ export default function App(){
       </Block>
       <Btn onPress={()=>patchS({archived:!current.archived})}>{current.archived?'RESTORE TO ACTIVE':'ARCHIVE SERMON'}</Btn>
     </>}
+    {screen==='select'&&<>{title('Choose Sermon Destination')}<Text style={styles.hint}>Selected ink has not been saved yet. Choose the dossier that should receive it; the handwriting itself stays in the original Note.</Text>{db.sermons.map(s=><Pressable key={s.id} style={styles.resource} onPress={()=>{setSelectedId(s.id);setScreen('card');}}><Text style={styles.itemTitle}>{s.title}</Text><Text style={styles.meta}>{s.passage}</Text></Pressable>)}<Btn onPress={()=>setScreen('new')}>NEW DOSSIER</Btn></>}
     {screen==='idea'&&current&&<>{title('Central Exegetical Idea')}<Text style={styles.hint}>Answer from the text, not from a favorite theme or commentary. Save explicitly.</Text>
       <Field name="WHAT THE BIBLICAL AUTHOR IS SAYING" multi value={idea.idea} set={x=>setIdea({...idea,idea:x})}/>
       <Field name="WHY THE AUTHOR SAYS IT / INTENDED RESPONSE" multi value={idea.purpose} set={x=>setIdea({...idea,purpose:x})}/>
@@ -132,18 +136,21 @@ export default function App(){
       {title(editId?'Edit Resource':'Keep This Discovery')}
       {!current?<><Text style={styles.hint}>Create a sermon before attaching a note or source.</Text><Btn onPress={()=>setScreen('new')}>NEW SERMON</Btn></>:<>
         <Text style={styles.meta}>{current.title} · {current.passage}</Text>
+        <Btn onPress={()=>setScreen('select')}>CHANGE DESTINATION SERMON</Btn>
+        {capturing?<Text style={styles.hint}>Reading selected handwriting on your Manta…</Text>:null}
+        {captureStatus?<Text style={styles.hint}>{captureStatus}</Text>:null}
         <TagRow items={KINDS} current={draft.kind} choose={kind=>setDraft({...draft,kind})}/>
         <Field name="OBSERVATION / SOURCE EXCERPT / JOURNAL" value={draft.body} multi set={body=>setDraft({...draft,body})}/>
         <Field name="VERSE OR CROSS-REFERENCE" value={draft.verse} set={verse=>setDraft({...draft,verse})}/>
         <Field name="AUTHOR / BOOK / DOCUMENT TITLE" value={draft.source} set={source=>setDraft({...draft,source})}/>
         <Field name="PAGE / SECTION" value={draft.page} set={page=>setDraft({...draft,page})}/>
         <Field name="SOURCE FILE OR IMAGE LOCATION" value={draft.location} set={location=>setDraft({...draft,location})}/>
-        <Btn onPress={capture}>CAPTURE CURRENT NOTE / DOCUMENT LOCATION</Btn>
+        <Btn disabled={capturing} onPress={capture}>READ SELECTED INK & SOURCE PAGE</Btn>
         <Text style={styles.label}>VERIFICATION</Text><TagRow items={STATUS} current={draft.status} choose={status=>setDraft({...draft,status})}/>
         <Text style={styles.label}>RESOURCE DESTINATION</Text><TagRow items={DISPOSITIONS} current={draft.disposition} choose={disposition=>setDraft({...draft,disposition})}/>
         <Btn active={draft.private||isPrivate(draft)} onPress={()=>setDraft({...draft,private:!draft.private})}>PRIVATE / EXCLUDE FROM EXPORT: {draft.private||isPrivate(draft)?'YES':'NO'}</Btn>
         <Text style={styles.hint}>Prayer and private journal entries are always excluded from public exports. Local storage is not encrypted; avoid confidential counseling records.</Text>
-        <View style={styles.row}><Btn active disabled={busy} onPress={addCard}>SAVE RESOURCE</Btn><Btn onPress={()=>setScreen('sermon')}>CANCEL</Btn></View>
+        <View style={styles.row}><Btn active disabled={busy||capturing} onPress={addCard}>SAVE RESOURCE</Btn><Btn onPress={()=>setScreen('sermon')}>CANCEL</Btn></View>
         {editId?<Btn onPress={()=>Alert.alert('Remove this resource card?','Your original Note/Document is never deleted.',[{text:'Cancel'},{text:'Remove',style:'destructive',onPress:async()=>{if(await patchS({cards:current.cards.filter(c=>c.id!==editId)})){setEditId('');setScreen('sermon');}}}])}>REMOVE RESOURCE CARD</Btn>:null}
       </>}
     </>}
@@ -192,7 +199,7 @@ const styles=StyleSheet.create({
   header:{borderBottomWidth:1,borderColor:C.line,paddingBottom:14,marginBottom:18},
   brand:{fontSize:11,letterSpacing:1.8,fontWeight:'700',color:C.dim},title:{fontSize:26,fontWeight:'700',color:C.ink,marginTop:6},
   sub:{fontSize:12,color:C.dim,marginTop:5},row:{flexDirection:'row',flexWrap:'wrap',gap:8,marginVertical:8,alignItems:'center'},
-  space:{flexDirection:'row',justifyContent:'space-between',gap:12},btn:{borderColor:C.ink,borderWidth:1,borderRadius:5,paddingHorizontal:10,paddingVertical:10,alignSelf:'flex-start',marginVertical:3},
+  space:{flexDirection:'row',justifyContent:'space-between',gap:12},btn:{borderColor:C.ink,borderWidth:1,borderRadius:5,paddingHorizontal:10,paddingVertical:12,minHeight:44,justifyContent:'center',alignSelf:'flex-start',marginVertical:3},
   btnActive:{backgroundColor:C.ink},btnText:{color:C.ink,fontSize:12,fontWeight:'700'},label:{fontSize:10,letterSpacing:.6,fontWeight:'700',color:C.dim,marginBottom:5},
   input:{borderWidth:1,borderColor:C.line,borderRadius:3,padding:10,fontSize:16,color:C.ink,backgroundColor:C.white},
   block:{borderTopWidth:1,borderColor:C.line,paddingTop:12,marginTop:18,marginBottom:8},
