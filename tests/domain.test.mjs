@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import {createSermon,createCard,normalize,merge,safePulpit,researchText,pulpitText,KINDS,CHECKS,isPrivate} from '../src/domain.js';
+let s=createSermon({title:'Christ calls Levi',passage:'Mark 2:13–22'});
+assert.equal(s.stage,'observe');assert.throws(()=>createSermon({title:'',passage:'Mark'}));
+const p=createCard({kind:'Prayer',body:'private prayer',disposition:'Pulpit'});
+const q=createCard({kind:'Exact quotation',body:'unchecked quote',source:'A book',page:'127',disposition:'Pulpit',status:'To verify'});
+const verified=createCard({kind:'Exact quotation',body:'verified quotation',source:'A book',page:'127',disposition:'Pulpit',status:'Verified'});
+const observation=createCard({kind:'Observation',body:'Text-based observation',disposition:'Pulpit'});
+s.cards=[p,q,verified,observation];
+assert(isPrivate(p));assert.equal(safePulpit(s).length,2);
+assert(!researchText(s).includes('private prayer'));assert(!pulpitText(s).includes('private prayer'));assert(!pulpitText(s).includes('unchecked quote'));
+assert(pulpitText(s).includes('verified quotation'));assert(pulpitText(s).includes('Text-based observation'));
+const imp=normalize({version:1,sermons:[{...s,cards:[{...observation,kind:'Prayer',private:false,disposition:'Pulpit'}]}]});
+assert.equal(imp.sermons[0].cards[0].private,true);assert.equal(imp.sermons[0].cards[0].disposition,'Keep for later');
+assert.equal(merge({version:3,sermons:[s]},imp).sermons.length,1);
+assert.equal(KINDS.length,15);assert.equal(CHECKS.length,10);
+console.log('PASS: sermon model, provenance, privacy, v1 migration, backup merge and sermon reviews');
