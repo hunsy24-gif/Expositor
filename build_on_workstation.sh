@@ -18,7 +18,7 @@ cp "$HERE/assets/icon.png" assets/icon.png
 node - <<'JS'
 const fs=require('fs');
 const p=JSON.parse(fs.readFileSync('package.json','utf8'));
-p.name='the-expositor';p.version='0.9.0';
+p.name='the-expositor';p.version='1.0.0';
 p.dependencies={...p.dependencies,react:'19.0.0','react-native':'0.79.2','sn-plugin-lib':'0.2.3','@react-native-async-storage/async-storage':'2.2.0'};
 fs.writeFileSync('package.json',JSON.stringify(p,null,2)+'\n');
 JS

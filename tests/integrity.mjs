@@ -1,7 +1,9 @@
 import fs from 'node:fs';import assert from 'node:assert/strict';
 const cfg=JSON.parse(fs.readFileSync('PluginConfig.json','utf8'));const app=JSON.parse(fs.readFileSync('app.json','utf8'));
-assert.equal(cfg.pluginKey,app.name);assert.equal(Number(cfg.versionCode),9);
-assert.deepEqual(cfg['uses-permissions'],['plugin.permission.FILE:READ']);
+assert.equal(cfg.pluginKey,app.name);assert.equal(Number(cfg.versionCode),10);
+assert.deepEqual(cfg['uses-permissions'],['plugin.permission.FILE:READ','plugin.permission.FILE:WRITE']);
+assert(fs.readFileSync('App.js','utf8').includes("screen==='note'"));
+assert(fs.readFileSync('src/note-bridge.js','utf8').includes('PluginNoteAPI.insertText'));
 assert(!cfg['uses-permissions'].includes('plugin.permission.INTERNET'));
 assert(fs.readFileSync('index.js','utf8').includes('registerButtonListener'));
 assert(fs.readFileSync('index.js','utf8').includes('editDataTypes:[0]'));

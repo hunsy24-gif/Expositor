@@ -36,6 +36,7 @@ jobs:
           node tests/ink.test.mjs
           node tests/storage.test.mjs
           node tests/audit.test.mjs
+          node tests/note-bridge.test.mjs
       - name: Compile native Supernote installer
         run: |
           bash build_on_workstation.sh "$RUNNER_TEMP/expositor-build"
