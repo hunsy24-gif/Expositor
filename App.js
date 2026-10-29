@@ -16,6 +16,7 @@ export default function App(){
   const [db,setDb]=useState({version:3,sermons:[]});
   const [loaded,setLoaded]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState('');
   const writing=useRef(false);
+  const [storageOK,setStorageOK]=useState(true);
   const [selectedId,setSelectedId]=useState(''),[screen,setScreen]=useState('home');
   const [search,setSearch]=useState(''),[resourceSearch,setResourceSearch]=useState(''),[showPrivate,setShowPrivate]=useState(false);
   const [newS,setNewS]=useState({title:'',passage:'',series:'',date:''});
@@ -25,7 +26,7 @@ export default function App(){
   const current=db.sermons.find(s=>s.id===selectedId);
   useEffect(()=>{
     let alive=true;
-    (async()=>{try{const saved=await loadDossiers();if(alive){setDb(saved);setSelectedId(saved.sermons[0]?.id||'');if(saved.recoveredFromPrevious)setError('Recovered an earlier copy after a damaged save. Export a backup.');}}catch(e){if(alive)setError('Storage failed: '+String(e));}finally{if(alive)setLoaded(true);}})();
+    (async()=>{try{const saved=await loadDossiers();if(alive){setDb(saved);setSelectedId(saved.sermons[0]?.id||'');if(saved.recoveredFromPrevious)setError('Recovered an earlier copy after a damaged save. Export a backup.');}}catch(e){if(alive){setStorageOK(false);setError('Storage failed: '+String(e));}}finally{if(alive)setLoaded(true);}})();
     const off=subscribeEntryEvent(event=>{
       if(event.id===81002||event.id===81003){
         setDraft(emptyCard());setEditId('');setScreen('card');
@@ -34,6 +35,7 @@ export default function App(){
     });return ()=>{alive=false;off();};
   },[]);
   async function save(next){
+    if(!storageOK){Alert.alert('Storage unavailable','Data could not be loaded. Do not overwrite this database.');return false;}
     if(writing.current){Alert.alert('Saving','An earlier change is still being saved.');return false;}
     writing.current=true;setBusy(true);
     try{const safe=normalize(next);await storeDossiers(safe);setDb(safe);setError('');return true;}
