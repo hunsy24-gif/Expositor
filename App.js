@@ -78,10 +78,10 @@ export default function App(){
     }catch(e){Alert.alert('Check the resource',String(e));}
   }
   async function capture(){
-    if(capturing)return;setCapturing(true);setCaptureStatus('Reading your selected handwriting…');
+    if(captureLock.current)return;captureLock.current=true;setCapturing(true);setCaptureStatus('Reading your selected handwriting…');
     try{const x=await getSelectionCapture({recognize:true});const location=[x.path,x.page?'page '+x.page:'',x.selection].filter(Boolean).join(' | ');if(!location&&!x.body)throw Error('No current selection was available. Enter the reference manually.');setDraft(d=>({...d,location:location||d.location,body:x.body||d.body,status:'To verify'}));setCaptureStatus(x.recognized?'Review the on-device transcription carefully before saving.':(x.warning||'Source reference captured without transcription.'));}
     catch(e){setCaptureStatus('Could not read selection; type or paste the note manually.');Alert.alert('Capture unavailable',String(e));}
-    finally{setCapturing(false);}
+    finally{captureLock.current=false;setCapturing(false);}
   }
   function share(message){Share.share({message}).catch(e=>Alert.alert('Share unavailable',String(e)));}
   async function restore(){
