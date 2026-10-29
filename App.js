@@ -41,8 +41,15 @@ export default function App(){
     (async()=>{try{const saved=await loadDossiers();if(alive){setDb(saved);setSelectedId(saved.sermons.find(s=>s.id===saved.activeSermonId)?.id||saved.sermons[0]?.id||'');if(saved.recoveredFromPrevious)setError('Recovered an earlier copy after a damaged save. Export a backup.');}}catch(e){if(alive){setStorageOK(false);setError('Storage failed: '+String(e));}}finally{if(alive)setLoaded(true);}})();
     const off=subscribeEntryEvent(event=>{
       if(event.id===81002||event.id===81003){
+        if(captureLock.current)return;
+        const prior=resourceRef.current;
+        if(prior&&(prior.editId||['body','verse','source','page','location'].some(k=>String(prior.draft?.[k]||'').trim()))){
+          Alert.alert('Research not saved','Save or cancel the current card before capturing a different selection.');
+          return;
+        }
+        captureLock.current=true;
         setDraft(emptyCard());setEditId('');setScreen('card');setCapturing(true);setCaptureStatus('Reading selected handwriting on this device…');
-        getSelectionCapture({recognize:true,context:event.id===81003?'doc':'note'}).then(v=>{if(!alive)return;const loc=[v.path,v.page?'page '+v.page:'',v.selection].filter(Boolean).join(' | ');setDraft(d=>({...d,location:loc,body:v.body||d.body,status:'To verify'}));setCaptureStatus(v.recognized?'Handwriting/text recognized. Check every word against the original before saving.':(v.warning||'Source location captured; add a brief note if needed.'));}).catch(e=>{if(alive)setCaptureStatus('Automatic capture unavailable: '+String(e));}).finally(()=>{if(alive)setCapturing(false);});
+        getSelectionCapture({recognize:true,context:event.id===81003?'doc':'note'}).then(v=>{if(!alive)return;const loc=[v.path,v.page?'page '+v.page:'',v.selection].filter(Boolean).join(' | ');setDraft(d=>({...d,location:loc,body:v.body||d.body,status:'To verify'}));setCaptureStatus(v.recognized?'Handwriting/text recognized. Check every word against the original before saving.':(v.warning||'Source location captured; add a brief note if needed.'));}).catch(e=>{if(alive)setCaptureStatus('Automatic capture unavailable: '+String(e));}).finally(()=>{captureLock.current=false;if(alive)setCapturing(false);});
       }
     });return ()=>{alive=false;off();};
   },[]);
