@@ -90,7 +90,7 @@ export default function App(){
     {screen==='sermon'&&current&&<>
       {title(current.title)}
       <Text style={styles.meta}>{current.passage}{current.series?' · '+current.series:''}</Text>
-      <View style={styles.row}><Btn active onPress={()=>{setEditId('');setDraft(emptyCard());setScreen('card');}}>+ KEEP DISCOVERY</Btn><Btn onPress={()=>setScreen('idea')}>CENTRAL IDEA</Btn></View>
+      <View style={styles.row}><Btn active onPress={()=>{setEditId('');setDraft(emptyCard());setScreen('card');}}>+ KEEP DISCOVERY</Btn><Btn onPress={()=>{setIdea({idea:current.idea||'',purpose:current.purpose||''});setScreen('idea');}}>CENTRAL IDEA</Btn></View>
       <Block title="STUDY THE PASSAGE">
         <TagRow items={STAGES.map(x=>x.label)} current={STAGES.find(x=>x.key===current.stage)?.label} choose={name=>patchS({stage:STAGES.find(x=>x.label===name).key})}/>
         <Text style={styles.question}>{STAGES.find(x=>x.key===current.stage)?.question}</Text>
