@@ -4,6 +4,7 @@ import {STAGES,KINDS,STATUS,DISPOSITIONS,CHECKS,createSermon,createCard,normaliz
 import {loadDossiers,storeDossiers,previousDossiers} from './src/storage';
 import {getNoteLocation} from './src/sdk';
 import {subscribeEntryEvent} from './src/entryEvents';
+import {mentorForStage} from './src/mentor';
 
 const C={ink:'#202321',dim:'#5b615e',line:'#ced2cb',white:'#ffffff',shade:'#eef0ec'};
 const emptyCard=()=>({kind:'Observation',body:'',verse:'',source:'',page:'',location:'',status:'To verify',disposition:'Study',private:false});
@@ -78,7 +79,7 @@ export default function App(){
   const title=(name)=> <View style={styles.header}><Text style={styles.brand}>THE EXPOSITOR</Text><Text style={styles.title}>{name}</Text><Text style={styles.sub}>The Word leads. The preacher studies. The sermon follows.</Text></View>;
   if(!loaded)return <View style={[styles.root,{justifyContent:'center',alignItems:'center'}]}><ActivityIndicator color={C.ink}/><Text>Opening your sermon library…</Text></View>;
   return <View style={styles.root}>
-    <View style={styles.nav}><Btn onPress={()=>setScreen('home')}>LIBRARY</Btn>{current?<Btn onPress={()=>setScreen('sermon')}>DOSSIER</Btn>:null}<Btn onPress={()=>setScreen('backup')}>BACKUP</Btn><Text style={styles.navRight}>{busy?'SAVING…':'OFFLINE'}</Text></View>
+    <View style={styles.nav}><Btn onPress={()=>setScreen('home')}>LIBRARY</Btn>{current?<Btn onPress={()=>setScreen('sermon')}>DOSSIER</Btn>:null}{current?<Btn onPress={()=>setScreen('mentor')}>MENTOR</Btn>:null}<Btn onPress={()=>setScreen('backup')}>BACKUP</Btn><Text style={styles.navRight}>{busy?'SAVING…':'OFFLINE'}</Text></View>
     {error?<Text style={styles.error}>{error}</Text>:null}
     <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.main}>
     {screen==='home'&&<>
@@ -92,7 +93,7 @@ export default function App(){
     {screen==='sermon'&&current&&<>
       {title(current.title)}
       <Text style={styles.meta}>{current.passage}{current.series?' · '+current.series:''}</Text>
-      <View style={styles.row}><Btn active onPress={()=>{setEditId('');setDraft(emptyCard());setScreen('card');}}>+ KEEP DISCOVERY</Btn><Btn onPress={()=>{setIdea({idea:current.idea||'',purpose:current.purpose||''});setScreen('idea');}}>CENTRAL IDEA</Btn></View>
+      <View style={styles.row}><Btn active onPress={()=>{setEditId('');setDraft(emptyCard());setScreen('card');}}>+ KEEP DISCOVERY</Btn><Btn onPress={()=>{setIdea({idea:current.idea||'',purpose:current.purpose||''});setScreen('idea');}}>CENTRAL IDEA</Btn><Btn onPress={()=>setScreen('mentor')}>STUDY WITH MENTORS</Btn></View>
       <Block title="STUDY THE PASSAGE">
         <TagRow items={STAGES.map(x=>x.label)} current={STAGES.find(x=>x.key===current.stage)?.label} choose={name=>patchS({stage:STAGES.find(x=>x.label===name).key})}/>
         <Text style={styles.question}>{STAGES.find(x=>x.key===current.stage)?.question}</Text>
@@ -145,6 +146,26 @@ export default function App(){
         <View style={styles.row}><Btn active disabled={busy} onPress={addCard}>SAVE RESOURCE</Btn><Btn onPress={()=>setScreen('sermon')}>CANCEL</Btn></View>
         {editId?<Btn onPress={()=>Alert.alert('Remove this resource card?','Your original Note/Document is never deleted.',[{text:'Cancel'},{text:'Remove',style:'destructive',onPress:async()=>{if(await patchS({cards:current.cards.filter(c=>c.id!==editId)})){setEditId('');setScreen('sermon');}}}])}>REMOVE RESOURCE CARD</Btn>:null}
       </>}
+    </>}
+    {screen==='mentor'&&current&&<>
+      {title('Preaching Mentor Desk')}
+      <Text style={styles.meta}>{current.title} · {current.passage}</Text>
+      <Text style={styles.hint}>These are ORIGINAL study questions informed by the cited authors, not quotations from them. The biblical text remains the authority; the conclusions must be yours.</Text>
+      <Block title="CHOOSE A PREPARATION STAGE">
+        <TagRow items={STAGES.map(x=>x.label)} current={STAGES.find(x=>x.key===current.stage)?.label} choose={name=>patchS({stage:STAGES.find(x=>x.label===name).key})}/>
+        <Text style={styles.question}>{STAGES.find(x=>x.key===current.stage)?.question}</Text>
+      </Block>
+      <Block title="SOURCE-INFORMED STUDY QUESTIONS">
+      {mentorForStage(current.stage).map((m,i)=><View style={styles.resource} key={m.source+'-'+i}>
+        <Text style={styles.label}>{m.source.toUpperCase()}</Text>
+        <Text style={styles.meta}>{m.ref}</Text>
+        <Text style={styles.question}>{m.question}</Text>
+        <Text style={styles.body}>{m.help}</Text>
+        <Btn onPress={()=>{setEditId('');setDraft({...emptyCard(),kind:m.kind,verse:current.passage,body:'Question to investigate: '+m.question+'\\n\\nMy study and evidence: '});setScreen('card');}}>INVESTIGATE & SAVE</Btn>
+      </View>)}
+      </Block>
+      <Text style={styles.hint}>Your notes become ordinary dossier cards with verse references. No outside author's words are auto-inserted as exact quotations.</Text>
+      <Btn onPress={()=>setScreen('sermon')}>RETURN TO DOSSIER</Btn>
     </>}
     {screen==='review'&&current&&<>{title('Faithfulness Review')}<Text style={styles.hint}>A preparation check, not a measure of spiritual power or the Spirit's work.</Text>
       <Text style={styles.meta}>{current.checklist.length} / {CHECKS.length} considered</Text>
