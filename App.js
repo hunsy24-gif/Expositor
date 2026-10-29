@@ -1,4 +1,5 @@
 import React,{useState,useEffect,useRef} from 'react';
+import {PluginManager} from 'sn-plugin-lib';
 import {ActivityIndicator,Alert,Pressable,ScrollView,Share,StyleSheet,Text,TextInput,View} from 'react-native';
 import {STAGES,KINDS,STATUS,DISPOSITIONS,CHECKS,createSermon,createCard,normalize,merge,safeResearch,safePulpit,researchText,pulpitText,isPrivate} from './src/domain';
 import {loadDossiers,storeDossiers,previousDossiers} from './src/storage';
@@ -32,7 +33,7 @@ export default function App(){
     const off=subscribeEntryEvent(event=>{
       if(event.id===81002||event.id===81003){
         setDraft(emptyCard());setEditId('');setScreen('card');setCapturing(true);setCaptureStatus('Reading selected handwriting on this device…');
-        getSelectionCapture({recognize:true}).then(v=>{if(!alive)return;const loc=[v.path,v.page?'page '+v.page:'',v.selection].filter(Boolean).join(' | ');setDraft(d=>({...d,location:loc,body:v.body||d.body,status:'To verify'}));setCaptureStatus(v.recognized?'Handwriting/text recognized. Check every word against the original before saving.':(v.warning||'Source location captured; add a brief note if needed.'));}).catch(e=>{if(alive)setCaptureStatus('Automatic capture unavailable: '+String(e));}).finally(()=>{if(alive)setCapturing(false);});
+        getSelectionCapture({recognize:true,context:event.id===81003?'doc':'note'}).then(v=>{if(!alive)return;const loc=[v.path,v.page?'page '+v.page:'',v.selection].filter(Boolean).join(' | ');setDraft(d=>({...d,location:loc,body:v.body||d.body,status:'To verify'}));setCaptureStatus(v.recognized?'Handwriting/text recognized. Check every word against the original before saving.':(v.warning||'Source location captured; add a brief note if needed.'));}).catch(e=>{if(alive)setCaptureStatus('Automatic capture unavailable: '+String(e));}).finally(()=>{if(alive)setCapturing(false);});
       }
     });return ()=>{alive=false;off();};
   },[]);
@@ -82,7 +83,7 @@ export default function App(){
   const title=(name)=> <View style={styles.header}><Text style={styles.brand}>THE EXPOSITOR</Text><Text style={styles.title}>{name}</Text><Text style={styles.sub}>The Word leads. The preacher studies. The sermon follows.</Text></View>;
   if(!loaded)return <View style={[styles.root,{justifyContent:'center',alignItems:'center'}]}><ActivityIndicator color={C.ink}/><Text>Opening your sermon library…</Text></View>;
   return <View style={styles.root}>
-    <View style={styles.nav}><Btn onPress={()=>setScreen('home')}>LIBRARY</Btn>{current?<Btn onPress={()=>setScreen('sermon')}>DOSSIER</Btn>:null}{current?<Btn onPress={()=>setScreen('mentor')}>MENTOR</Btn>:null}<Btn onPress={()=>setScreen('backup')}>BACKUP</Btn><Text style={styles.navRight}>{busy?'SAVING…':'OFFLINE'}</Text></View>
+    <View style={styles.nav}><Btn onPress={()=>setScreen('home')}>LIBRARY</Btn>{current?<Btn onPress={()=>setScreen('sermon')}>DOSSIER</Btn>:null}<Btn onPress={()=>setScreen('backup')}>BACKUP</Btn><Btn onPress={()=>{try{PluginManager.closePluginView();}catch(e){Alert.alert('Close from the device toolbar',String(e));}}}>RETURN TO NOTE</Btn>{busy?<Text style={styles.navRight}>SAVING…</Text>:null}</View>
     {error?<Text style={styles.error}>{error}</Text>:null}
     <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.main}>
     {screen==='home'&&<>
