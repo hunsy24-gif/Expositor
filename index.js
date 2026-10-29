@@ -21,6 +21,7 @@ const name=x=>JSON.stringify({en_US:x,en:x});
   const buttons=[
     [1,['NOTE','DOC'],{id:81001,name:name('The Expositor'),icon,showType:1,enable:true}],
     [2,['NOTE'],{id:81002,name:name('Keep in Sermon'),icon,showType:1,enable:true,editDataTypes:[0]}],
+    [2,['NOTE'],{id:81004,name:name('Keep Note Text'),icon,showType:1,enable:true,editDataTypes:[3]}],
     [3,['DOC'],{id:81003,name:name('Keep in Sermon'),icon,showType:1,enable:true}],
   ];
   for(const [type,apps,config] of buttons){
