@@ -16,18 +16,18 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p "$RUNNER_TEMP/expositor-installer"
-          gh run download 40927091610 --repo "$GITHUB_REPOSITORY" --name TheExpositor-snplg --dir "$RUNNER_TEMP/expositor-installer"
+          gh run download 40930798687 --repo "$GITHUB_REPOSITORY" --name TheExpositor-snplg --dir "$RUNNER_TEMP/expositor-installer"
           test -s "$RUNNER_TEMP/expositor-installer/the-expositor.snplg"
-          cp "$RUNNER_TEMP/expositor-installer/the-expositor.snplg" "$RUNNER_TEMP/Expositor-Manta-3.31.45-v0.7.0-alpha.snplg"
-          sha256sum "$RUNNER_TEMP/Expositor-Manta-3.31.45-v0.7.0-alpha.snplg"
+          cp "$RUNNER_TEMP/expositor-installer/the-expositor.snplg" "$RUNNER_TEMP/Expositor-Manta-3.31.45-v0.8.0-alpha.snplg"
+          sha256sum "$RUNNER_TEMP/Expositor-Manta-3.31.45-v0.8.0-alpha.snplg"
       - name: Publish clearly labeled Manta test release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          FILE="$RUNNER_TEMP/Expositor-Manta-3.31.45-v0.7.0-alpha.snplg"
-          TAG="v0.7.0-alpha"
+          FILE="$RUNNER_TEMP/Expositor-Manta-3.31.45-v0.8.0-alpha.snplg"
+          TAG="v0.8.0-alpha"
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release upload "$TAG" "$FILE" --repo "$GITHUB_REPOSITORY" --clobber
           else
-            gh release create "$TAG" "$FILE" --repo "$GITHUB_REPOSITORY" --prerelease --title "The Expositor v0.7 alpha — Supernote Manta" --notes "Compiled with Supernote's React Native 0.79.2 plugin framework for Chauvet 3.31.45. Source model and privacy tests pass; native .npk, JS bundle, and AsyncStorage registration verified. v0.7 adds the source-informed Preaching Mentor Desk with five stage-specific questions and tests, while keeping all interpretation in the preacher's hands. PHYSICAL MANTA TESTING IS STILL REQUIRED. Use disposable notes first. Metadata is stored locally without encryption; do not enter confidential pastoral counseling details. Copy the .snplg to MyStyle, then install via Settings > Apps > Plugins."
+            gh release create "$TAG" "$FILE" --repo "$GITHUB_REPOSITORY" --prerelease --title "The Expositor v0.8 alpha — Supernote Manta" --notes "Compiled with Supernote's React Native 0.79.2 plugin framework for Chauvet 3.31.45. Source model and privacy tests pass; native .npk, JS bundle, and AsyncStorage registration verified. v0.8 adds on-device NOTE handwriting OCR, typed NOTE selection, PDF/EPUB text selection, source-page indexing, current-sermon persistence and e-ink tap-target improvements. The source-informed Preaching Mentor Desk remains included. PHYSICAL MANTA TESTING IS STILL REQUIRED. Use disposable notes first. Metadata is stored locally without encryption; do not enter confidential pastoral counseling details. Copy the .snplg to MyStyle, then install via Settings > Apps > Plugins."
           fi
