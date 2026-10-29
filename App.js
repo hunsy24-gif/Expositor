@@ -27,7 +27,12 @@ export default function App(){
   const [resumeCardAfterNew,setResumeCardAfterNew]=useState(false);
   const [idea,setIdea]=useState({idea:'',purpose:''});
   const [importText,setImportText]=useState('');
+  const [lastSaveMessage,setLastSaveMessage]=useState('');
   const current=db.sermons.find(s=>s.id===selectedId);
+  const dirtyCard=screen==='card'&&(!!editId||['body','verse','source','page','location'].some(k=>String(draft[k]||'').trim()));
+  const dirtyIdea=screen==='idea'&&current&&(idea.idea!==current.idea||idea.purpose!==current.purpose);
+  function navigate(next){if(busy||capturing){Alert.alert('Please finish the current operation','The Expositor is still saving or reading the selection.');return;}if(dirtyCard||dirtyIdea){Alert.alert('Unsaved preparation','Your current changes are not saved.',[{text:'Keep editing',style:'cancel'},{text:'Discard changes',style:'destructive',onPress:()=>{setDraft(emptyCard());setEditId('');setCaptureStatus('');setScreen(next);}}]);return;}setScreen(next);}
+  function closeToNote(){if(busy||capturing){Alert.alert('Save or finish capture before closing');return;}const close=()=>{Promise.resolve().then(()=>PluginManager.closePluginView()).catch(e=>Alert.alert('Could not close plugin',String(e)));};if(dirtyCard||dirtyIdea){Alert.alert('Unsaved preparation','Save this work before returning to handwriting.',[{text:'Keep editing',style:'cancel'},{text:'Discard and return',style:'destructive',onPress:close}]);}else close();}
   useEffect(()=>{
     let alive=true;
     (async()=>{try{const saved=await loadDossiers();if(alive){setDb(saved);setSelectedId(saved.sermons.find(s=>s.id===saved.activeSermonId)?.id||saved.sermons[0]?.id||'');if(saved.recoveredFromPrevious)setError('Recovered an earlier copy after a damaged save. Export a backup.');}}catch(e){if(alive){setStorageOK(false);setError('Storage failed: '+String(e));}}finally{if(alive)setLoaded(true);}})();
@@ -42,8 +47,8 @@ export default function App(){
     if(!storageOK){Alert.alert('Storage unavailable','Data could not be loaded. Do not overwrite this database.');return false;}
     if(writing.current){Alert.alert('Saving','An earlier change is still being saved.');return false;}
     writing.current=true;setBusy(true);
-    try{const safe=normalize(next);await storeDossiers(safe);setDb(safe);setError('');return true;}
-    catch(e){setError('Save FAILED: '+String(e));Alert.alert('Save failed','Do not trust this change. Export or recover your existing records.');return false;}
+    try{const safe=normalize(next);await storeDossiers(safe);setDb(safe);setError('');setLastSaveMessage('Saved locally');return true;}
+    catch(e){setLastSaveMessage('Save failed');setError('Save FAILED: '+String(e));Alert.alert('Save failed','Do not trust this change. Export or recover your existing records.');return false;}
     finally{writing.current=false;setBusy(false);}
   }
   function patchS(patch){
@@ -80,11 +85,12 @@ export default function App(){
   function updateChecklist(i){
     if(!current)return;const set=new Set(current.checklist||[]);if(set.has(i))set.delete(i);else set.add(i);patchS({checklist:[...set]});
   }
-  function editCard(c){setEditId(c.id);setDraft({...c});setScreen('card');}
+  function editCard(c){setEditId(c.id);setDraft({...c});setCaptureStatus('');setScreen('card');}
   const title=(name)=> <View style={styles.header}><Text style={styles.brand}>THE EXPOSITOR</Text><Text style={styles.title}>{name}</Text><Text style={styles.sub}>The Word leads. The preacher studies. The sermon follows.</Text></View>;
   if(!loaded)return <View style={[styles.root,{justifyContent:'center',alignItems:'center'}]}><ActivityIndicator color={C.ink}/><Text>Opening your sermon library…</Text></View>;
   return <View style={styles.root}>
-    <View style={styles.nav}><Btn onPress={()=>setScreen('home')}>LIBRARY</Btn>{current?<Btn onPress={()=>setScreen('sermon')}>DOSSIER</Btn>:null}<Btn onPress={()=>setScreen('backup')}>BACKUP</Btn><Btn onPress={()=>{try{PluginManager.closePluginView();}catch(e){Alert.alert('Close from the device toolbar',String(e));}}}>RETURN TO NOTE</Btn>{busy?<Text style={styles.navRight}>SAVING…</Text>:null}</View>
+    <View style={styles.nav}><Btn onPress={()=>navigate('home')}>LIBRARY</Btn>{current?<Btn onPress={()=>navigate('sermon')}>DOSSIER</Btn>:null}<View style={{flex:1}}/><Btn onPress={closeToNote}>RETURN TO NOTE</Btn></View>
+    <View style={styles.statusBar}><Text numberOfLines={1} style={styles.statusText}>{busy?'SAVING…':capturing?'READING INK…':lastSaveMessage||'LOCAL · NO NETWORK'}</Text><Btn onPress={()=>navigate('backup')}>BACKUP</Btn></View>
     {error?<Text style={styles.error}>{error}</Text>:null}
     <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.main}>
     {screen==='home'&&<>
@@ -138,7 +144,7 @@ export default function App(){
       {title(editId?'Edit Resource':'Keep This Discovery')}
       {!current?<><Text style={styles.hint}>Create a sermon before attaching a note or source.</Text><Btn onPress={()=>{setResumeCardAfterNew(true);setScreen('new');}}>NEW SERMON</Btn></>:<>
         <Text style={styles.meta}>{current.title} · {current.passage}</Text>
-        <Btn onPress={()=>setScreen('select')}>CHANGE DESTINATION SERMON</Btn>
+        {!editId?<Btn onPress={()=>setScreen('select')}>CHANGE DESTINATION SERMON</Btn>:<Text style={styles.hint}>To keep an edited resource attached to its source sermon, save it here first. Create a new card to file research under a different sermon.</Text>}
         {capturing?<Text style={styles.hint}>Reading selected handwriting on your Manta…</Text>:null}
         {captureStatus?<Text style={styles.hint}>{captureStatus}</Text>:null}
         <TagRow items={KINDS} current={draft.kind} choose={kind=>setDraft({...draft,kind})}/>
@@ -152,7 +158,7 @@ export default function App(){
         <Text style={styles.label}>RESOURCE DESTINATION</Text><TagRow items={DISPOSITIONS} current={draft.disposition} choose={disposition=>setDraft({...draft,disposition})}/>
         <Btn active={draft.private||isPrivate(draft)} onPress={()=>setDraft({...draft,private:!draft.private})}>PRIVATE / EXCLUDE FROM EXPORT: {draft.private||isPrivate(draft)?'YES':'NO'}</Btn>
         <Text style={styles.hint}>Prayer and private journal entries are always excluded from public exports. Local storage is not encrypted; avoid confidential counseling records.</Text>
-        <View style={styles.row}><Btn active disabled={busy||capturing} onPress={addCard}>SAVE RESOURCE</Btn><Btn onPress={()=>setScreen('sermon')}>CANCEL</Btn></View>
+        <View style={styles.row}><Btn active disabled={busy||capturing} onPress={addCard}>SAVE RESOURCE</Btn><Btn onPress={()=>navigate('sermon')}>CANCEL</Btn></View>
         {editId?<Btn onPress={()=>Alert.alert('Remove this resource card?','Your original Note/Document is never deleted.',[{text:'Cancel'},{text:'Remove',style:'destructive',onPress:async()=>{if(await patchS({cards:current.cards.filter(c=>c.id!==editId)})){setEditId('');setScreen('sermon');}}}])}>REMOVE RESOURCE CARD</Btn>:null}
       </>}
     </>}
@@ -196,7 +202,9 @@ export default function App(){
   </View>;
 }
 const styles=StyleSheet.create({
-  root:{flex:1,backgroundColor:C.white},nav:{height:62,borderBottomWidth:1,borderColor:C.line,flexDirection:'row',alignItems:'center',paddingHorizontal:10,gap:5},
+  root:{flex:1,backgroundColor:C.white},nav:{minHeight:54,borderBottomWidth:1,borderColor:C.line,flexDirection:'row',alignItems:'center',paddingHorizontal:9,gap:5},
+  statusBar:{minHeight:43,borderBottomWidth:1,borderColor:C.line,flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingHorizontal:12},
+  statusText:{fontSize:11,color:C.dim,flexShrink:1},
   navRight:{fontSize:10,color:C.dim,marginLeft:'auto'},main:{padding:15,paddingBottom:65},
   header:{borderBottomWidth:1,borderColor:C.line,paddingBottom:14,marginBottom:18},
   brand:{fontSize:11,letterSpacing:1.8,fontWeight:'700',color:C.dim},title:{fontSize:26,fontWeight:'700',color:C.ink,marginTop:6},
