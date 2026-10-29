@@ -1,6 +1,6 @@
 import fs from 'node:fs';import assert from 'node:assert/strict';
 const cfg=JSON.parse(fs.readFileSync('PluginConfig.json','utf8'));const app=JSON.parse(fs.readFileSync('app.json','utf8'));
-assert.equal(cfg.pluginKey,app.name);assert.equal(Number(cfg.versionCode),8);
+assert.equal(cfg.pluginKey,app.name);assert.equal(Number(cfg.versionCode),9);
 assert.deepEqual(cfg['uses-permissions'],['plugin.permission.FILE:READ']);
 assert(!cfg['uses-permissions'].includes('plugin.permission.INTERNET'));
 assert(fs.readFileSync('index.js','utf8').includes('registerButtonListener'));
@@ -11,6 +11,9 @@ assert(fs.readFileSync('App.js','utf8').includes('RETURN TO NOTE'));
 assert(fs.readFileSync('src/sdk.js','utf8').includes('PluginDocAPI.getLastSelectedText'));
 assert(fs.readFileSync('src/sdk.js','utf8').includes('PluginCommAPI.recognizeElements'));
 assert(fs.readFileSync('src/sdk.js','utf8').includes('setLassoBoxState(2)'));
-assert(fs.readFileSync('src/storage.js','utf8').includes('read-back verification'));
+assert(fs.readFileSync('src/storage-core.js','utf8').includes('read-back verification'));
+assert(fs.readFileSync('src/storage.js','utf8').includes('dossierStore'));
+assert(fs.readFileSync('index.js','utf8').includes('getPluginDirPath'));
+assert(fs.readFileSync('App.js','utf8').includes('Unsaved preparation'));
 assert(fs.readFileSync('build_on_workstation.sh','utf8').includes('./buildPlugin.sh'));
 console.log('PASS: installer source and permission integrity');

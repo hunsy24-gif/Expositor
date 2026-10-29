@@ -6,6 +6,16 @@
 
 Scripture leads. The preacher studies. The sermon follows. The plugin does not create sermons or interpret biblical passages on the preacher's behalf.
 
+### v0.9 stability and e-ink changes
+
+- Tested storage-core: corruption fallback, two-copy retention, read/write failure visibility and refusal to overwrite data written by a newer Expositor version.
+- Confirmation before navigating away from unfinished research or an unsaved exegetical idea; no silent discarding when closing the plugin.
+- A research card being edited cannot be moved to a different sermon through the new-card destination selector.
+- Simpler top toolbar, readably sized pen targets, save feedback.
+- Reliable registered toolbar icon path and separate stroke / typed-text NOTE selection buttons (on-device confirmation still required).
+- Single in-flight ink recognition; a new lasso cannot overwrite another pending research capture.
+- Pure-JS load/save and corpus-size regression tests added to CI.
+
 ### What's genuinely implemented
 
 - Saved, searchable sermon dossiers: passages, series, observation/interpretation/reflection/sermon/pulpit stages, central idea and purpose.
