@@ -12,7 +12,7 @@ async function releaseLasso(){try{await PluginCommAPI.setLassoBoxState(2);}catch
  * Source pageIndex is retained unmodified internally; displayed page is one-based.
  */
 export async function getSelectionCapture({recognize=true,context='auto'}={}){
-  await ensureRead();
+  try{await ensureRead();}catch(error){if(context!=='doc')await releaseLasso();throw error;}
   const result={path:'',page:'',pageIndex:null,selection:'',body:'',recognized:false,warning:''};
   try{result.path=String(unwrap(await PluginCommAPI.getCurrentFilePath(),'current file path'));}catch(e){result.warning='File path unavailable; enter document title/page manually.';}
   try{const n=unwrap(await PluginCommAPI.getCurrentPageNum(),'current page');if(Number.isInteger(Number(n))&&Number(n)>=0){result.pageIndex=Number(n);result.page=String(result.pageIndex+1);}}catch(e){}
