@@ -1,0 +1,39 @@
+name: Build Expositor Supernote Plugin
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 65
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@v3
+      - name: Install required Android platforms
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager 'platform-tools' 'platforms;android-35' 'build-tools;35.0.0' 'ndk;27.0.12077973'
+      - name: Validate research logic and source integrity
+        run: |
+          node tests/domain.test.mjs
+          node tests/integrity.mjs
+      - name: Compile native Supernote installer
+        run: |
+          bash build_on_workstation.sh "$RUNNER_TEMP/expositor-build"
+      - name: Upload compiled plugin
+        uses: actions/upload-artifact@v4
+        with:
+          name: TheExpositor-snplg
+          path: ${{ runner.temp }}/expositor-build/TheExpositor/build/outputs/*.snplg
+          if-no-files-found: error
+          retention-days: 30
