@@ -6,6 +6,8 @@ import {loadDossiers,storeDossiers,previousDossiers} from './src/storage';
 import {getNoteLocation,getSelectionCapture} from './src/sdk';
 import {subscribeEntryEvent} from './src/entryEvents';
 import {mentorForStage} from './src/mentor';
+import {insertIntoBlankNote} from './src/note-bridge';
+import {NOTE_TEMPLATES,promptForNote,sourceCardForNote} from './src/note-bridge-core';
 
 const C={ink:'#202321',dim:'#5b615e',line:'#ced2cb',white:'#ffffff',shade:'#eef0ec'};
 const emptyCard=()=>({kind:'Observation',body:'',verse:'',source:'',page:'',location:'',status:'To verify',disposition:'Study',private:false});
@@ -30,6 +32,8 @@ export default function App(){
   const [idea,setIdea]=useState({idea:'',purpose:''});
   const [importText,setImportText]=useState('');
   const [lastSaveMessage,setLastSaveMessage]=useState('');
+  const [noteText,setNoteText]=useState(''),[noteMode,setNoteMode]=useState('observe'),[noteBusy,setNoteBusy]=useState(false);
+  const noteInsertLock=useRef(false);
   const current=db.sermons.find(s=>s.id===selectedId);
   useEffect(()=>{resourceRef.current={draft,editId};},[draft,editId]);
   const dirtyCard=screen==='card'&&(!!editId||['body','verse','source','page','location'].some(k=>String(draft[k]||'').trim()));
@@ -84,6 +88,19 @@ export default function App(){
     finally{captureLock.current=false;setCapturing(false);}
   }
   function share(message){Share.share({message}).catch(e=>Alert.alert('Share unavailable',String(e)));}
+  function openNoteWriter(mode='observe',card=null){
+    try{const value=card?sourceCardForNote(card,current):promptForNote(mode,current);setNoteMode(card?'research':mode);setNoteText(value);setScreen('note');}
+    catch(e){Alert.alert('Cannot transfer this material',String(e));}
+  }
+  async function writeToNote(){
+    if(noteInsertLock.current||busy||capturing)return;
+    noteInsertLock.current=true;setNoteBusy(true);
+    try{const out=await insertIntoBlankNote(noteText);setLastSaveMessage('Added to native Note');
+      Alert.alert('Inserted into your Supernote Note','A short editable text box is now on page '+(out.pageIndex+1)+'. Close The Expositor and handwrite freely beneath it.',[
+      {text:'Keep Expositor open',style:'cancel'},{text:'Return to writing',onPress:closeToNote}]);
+    }catch(e){Alert.alert('Nothing inserted',String(e)+'\n\nOpen a blank native NOTE page and try again. Your existing handwriting is unchanged.');}
+    finally{noteInsertLock.current=false;setNoteBusy(false);}
+  }
   async function restore(){
     try{const incoming=JSON.parse(importText);if(await save(merge(db,incoming))){setImportText('');Alert.alert('Imported','Missing sermon IDs were merged; existing sermons retained.');}}
     catch(e){Alert.alert('Invalid backup',String(e));}
@@ -115,7 +132,7 @@ export default function App(){
     {screen==='sermon'&&current&&<>
       {title(current.title)}
       <Text style={styles.meta}>{current.passage}{current.series?' · '+current.series:''}</Text>
-      <View style={styles.row}><Btn active onPress={()=>{setEditId('');setDraft(emptyCard());setScreen('card');}}>+ KEEP DISCOVERY</Btn><Btn onPress={()=>{setIdea({idea:current.idea||'',purpose:current.purpose||''});setScreen('idea');}}>CENTRAL IDEA</Btn><Btn onPress={()=>setScreen('mentor')}>STUDY WITH MENTORS</Btn></View>
+      <View style={styles.row}><Btn active onPress={()=>{setEditId('');setDraft(emptyCard());setScreen('card');}}>+ KEEP DISCOVERY</Btn><Btn onPress={()=>openNoteWriter(current.stage)}>WRITE IN MY NOTE</Btn><Btn onPress={()=>{setIdea({idea:current.idea||'',purpose:current.purpose||''});setScreen('idea');}}>CENTRAL IDEA</Btn><Btn onPress={()=>setScreen('mentor')}>STUDY WITH MENTORS</Btn></View>
       <Block title="STUDY THE PASSAGE">
         <TagRow items={STAGES.map(x=>x.label)} current={STAGES.find(x=>x.key===current.stage)?.label} choose={name=>patchS({stage:STAGES.find(x=>x.label===name).key})}/>
         <Text style={styles.question}>{STAGES.find(x=>x.key===current.stage)?.question}</Text>
@@ -136,7 +153,7 @@ export default function App(){
           {c.source?<Text style={styles.meta}>SOURCE · {c.source} {c.page||''}</Text>:null}
           {c.location?<Text style={styles.meta}>LOCATION · {c.location}</Text>:null}
           <Text style={styles.meta}>{c.status} · {c.disposition}</Text>
-          <Btn onPress={()=>editCard(c)}>EDIT RESOURCE</Btn>
+          <Btn onPress={()=>editCard(c)}>EDIT RESOURCE</Btn>{!isPrivate(c)?<Btn onPress={()=>openNoteWriter('research',c)}>SEND TO NOTE</Btn>:null}
         </View>)}
         <Btn onPress={()=>setShowPrivate(p=>!p)}>{showPrivate?'HIDE PRIVATE JOURNAL':'SHOW PRIVATE JOURNAL'}</Btn>
       </Block>
@@ -188,11 +205,23 @@ export default function App(){
         <Text style={styles.meta}>{m.ref}</Text>
         <Text style={styles.question}>{m.question}</Text>
         <Text style={styles.body}>{m.help}</Text>
-        <Btn onPress={()=>{setEditId('');setDraft({...emptyCard(),kind:m.kind,verse:current.passage,body:'Question to investigate: '+m.question+'\\n\\nMy study and evidence: '});setScreen('card');}}>INVESTIGATE & SAVE</Btn>
+        <Btn onPress={()=>{setEditId('');setDraft({...emptyCard(),kind:m.kind,verse:current.passage,body:'Question to investigate: '+m.question+'\\n\\nMy study and evidence: '});setScreen('card');}}>INVESTIGATE & SAVE</Btn><Btn onPress={()=>{setNoteMode(current.stage);setNoteText(m.source+' — STUDY QUESTION\n'+m.question+'\n'+m.help);setScreen('note');}}>WRITE ANSWER IN NOTE</Btn>
       </View>)}
       </Block>
       <Text style={styles.hint}>Your notes become ordinary dossier cards with verse references. No outside author's words are auto-inserted as exact quotations.</Text>
       <Btn onPress={()=>setScreen('sermon')}>RETURN TO DOSSIER</Btn>
+    </>}
+    {screen==='note'&&current&&<>
+      {title('Write in My Supernote NOTE')}
+      <Text style={styles.hint}>This puts ONE editable prompt or short research excerpt directly onto the current BLANK Supernote NOTE page. The rest stays open for your handwriting. It does not replace existing strokes.</Text>
+      <Block title="CHOOSE A PAGE PROMPT">
+        <TagRow items={NOTE_TEMPLATES.map(x=>x.label)} current={NOTE_TEMPLATES.find(x=>x.key===noteMode)?.label} choose={label=>{const t=NOTE_TEMPLATES.find(x=>x.label===label);setNoteMode(t.key);setNoteText(promptForNote(t.key,current));}}/>
+      </Block>
+      <Field name="TEXT TO INSERT IN NOTE (EDITABLE)" value={noteText} multi set={setNoteText}/>
+      <Text style={styles.hint}>Before tapping Insert, open a blank page in a native NOTE file and launch The Expositor from that NOTE. If you are reading a PDF, save your excerpt to a dossier first, then reopen The Expositor from your Note.</Text>
+      <Btn active disabled={noteBusy||busy||capturing||!noteText.trim()} onPress={()=>Alert.alert('Insert into blank native Note?','This will place one text box on the current blank NOTE page after checking it has no existing elements.',[{text:'Cancel',style:'cancel'},{text:'Insert',onPress:writeToNote}])}>{noteBusy?'INSERTING…':'INSERT INTO MY BLANK NOTE PAGE'}</Btn>
+      <Btn onPress={()=>navigate('sermon')}>BACK TO DOSSIER</Btn>
+      <Text style={styles.hint}>For a full handwriting-first page, use The Expositor PDF templates in MyStyle and apply one as a custom NOTE template. Private journal answers should be handwritten in your Note rather than stored in the plugin.</Text>
     </>}
     {screen==='review'&&current&&<>{title('Faithfulness Review')}<Text style={styles.hint}>A preparation check, not a measure of spiritual power or the Spirit's work.</Text>
       <Text style={styles.meta}>{current.checklist.length} / {CHECKS.length} considered</Text>
