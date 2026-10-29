@@ -1,0 +1,12 @@
+import {AppRegistry, Image} from 'react-native';
+import App from './App';
+import {name as appName} from './app.json';
+import {PluginManager} from 'sn-plugin-lib';
+import {pushEntryEvent} from './src/entryEvents';
+AppRegistry.registerComponent(appName,()=>App);
+PluginManager.init();
+PluginManager.registerButtonListener({onButtonPress:pushEntryEvent});
+const icon=Image.resolveAssetSource(require('./assets/icon.png')).uri;
+PluginManager.registerButton(1,['NOTE','DOC'],{id:81001,name:'The Expositor',icon,showType:1});
+PluginManager.registerButton(2,['NOTE','DOC'],{id:81002,name:'Keep in Sermon',icon,showType:1,editDataTypes:[0]});
+PluginManager.registerButton(3,['DOC'],{id:81003,name:'Keep in Sermon',icon,showType:1});
