@@ -23,6 +23,7 @@ await assert.rejects(store.store({version:3,sermons:[s]}));
 a.rejectKey=null;
 a.data.set(KEYS.main,JSON.stringify({version:99,sermons:[]}));
 await assert.rejects(store.store({version:3,sermons:[s]}),/newer Expositor/);
+await assert.rejects(store.load(),/newer Expositor/);
 const blank=mock(),bs=dossierStore(blank);assert.equal((await bs.load()).sermons.length,0);
 blank.data.set(KEYS.legacy,v);assert.equal((await bs.load()).sermons.length,1);
 const corrupt=mock(),cs=dossierStore(corrupt);corrupt.data.set(KEYS.main,'{bad');
