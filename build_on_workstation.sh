@@ -23,6 +23,20 @@ p.dependencies={...p.dependencies,react:'19.0.0','react-native':'0.79.2','sn-plu
 fs.writeFileSync('package.json',JSON.stringify(p,null,2)+'\n');
 JS
 npm install --no-audit --no-fund
+# Supernote's build template excludes the entire @react-native* namespace
+# from native-module detection. That accidentally skips @react-native-async-storage.
+# Narrow the exclusion to @react-native/ (official modules only).
+python3 - <<'PY'
+from pathlib import Path
+p=Path('buildPlugin.sh')
+s=p.read_text()
+old='[[ "$lower" == @react-native* ]] && return 0'
+new='[[ "$lower" == @react-native/* ]] && return 0'
+if old not in s:
+    raise SystemExit('Supernote build script has changed; inspect native module scan before proceeding.')
+p.write_text(s.replace(old,new,1))
+print('Native module scanner patched to include @react-native-async-storage.')
+PY
 chmod +x buildPlugin.sh android/gradlew
 rm -rf build/generated build/outputs
 ./buildPlugin.sh
