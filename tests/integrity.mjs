@@ -1,0 +1,11 @@
+import fs from 'node:fs';import assert from 'node:assert/strict';
+const cfg=JSON.parse(fs.readFileSync('PluginConfig.json','utf8'));const app=JSON.parse(fs.readFileSync('app.json','utf8'));
+assert.equal(cfg.pluginKey,app.name);assert.equal(cfg.versionCode,6);
+assert.deepEqual(cfg['uses-permissions'],['plugin.permission.FILE:READ']);
+assert(!cfg['uses-permissions'].includes('plugin.permission.INTERNET'));
+assert(fs.readFileSync('index.js','utf8').includes('registerButtonListener'));
+assert(fs.readFileSync('index.js','utf8').includes('editDataTypes:[0]'));
+assert(fs.readFileSync('App.js','utf8').includes('pulpitText(current)'));
+assert(fs.readFileSync('src/storage.js','utf8').includes('read-back verification'));
+assert(fs.readFileSync('build_on_workstation.sh','utf8').includes('./buildPlugin.sh'));
+console.log('PASS: installer source and permission integrity');
