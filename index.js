@@ -1,4 +1,4 @@
-import {AppRegistry} from 'react-native';
+import {AppRegistry,Image} from 'react-native';
 import App from './App';
 import {name as appName} from './app.json';
 import {PluginManager} from 'sn-plugin-lib';
@@ -13,7 +13,7 @@ const name=x=>JSON.stringify({en_US:x,en:x});
 (async()=>{
   await PluginManager.init();
   PluginManager.registerButtonListener({onButtonPress:pushEntryEvent});
-  let icon='';
+  let icon=Image.resolveAssetSource(require('./assets/icon.png')).uri;
   try{
     const dir=await PluginManager.getPluginDirPath();
     if(dir)icon='file://'+String(dir).replace(/\/$/,'')+'/icon.png';
